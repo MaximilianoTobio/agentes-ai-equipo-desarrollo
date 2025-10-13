@@ -1,0 +1,36 @@
+name: "Task técnica"
+description: "Tarea técnica/refactor/chore"
+title: "chore/refactor/docs: <resumen>"
+labels: ["type:chore","status:ready"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: "Usa este template para tareas técnicas sin cambio funcional directo."
+  - type: textarea
+    id: scope
+    attributes:
+      label: Alcance
+      placeholder: "Qué se hará y qué no"
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impacto/Riesgos
+      placeholder: "Performance, seguridad, deuda técnica, compatibilidad"
+  - type: textarea
+    id: test_plan
+    attributes:
+      label: Plan de pruebas (si aplica)
+      placeholder: "Casos afectados, comandos de test"
+  - type: checkboxes
+    id: dod
+    attributes:
+      label: Definition of Done
+      options:
+        - label: "Sin romper APIs/contratos públicos"
+        - label: "Tests/Smoke actualizados si aplica"
+        - label: "black --check y flake8 OK"
+        - label: "Docs/ADR actualizados si aplica"
+        - label: "Aprobado en Code Review"

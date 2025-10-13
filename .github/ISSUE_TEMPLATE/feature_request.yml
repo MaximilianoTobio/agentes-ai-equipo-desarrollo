@@ -1,0 +1,52 @@
+name: "Feature request"
+description: "Proponer una funcionalidad nueva (XP/TDD)"
+title: "feat: <resumen corto>"
+labels: ["type:feature","status:ready"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Contexto**: Describe el problema que esta feature resuelve.
+        **XP**: pequeña, testeable, con valor de negocio claro.
+  - type: input
+    id: user_story
+    attributes:
+      label: User Story (INVEST)
+      description: "Como <rol> quiero <capacidad> para <beneficio>"
+      placeholder: "Como <usuario> quiero ... para ..."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Criterios de aceptación (Given/When/Then)
+      description: "Especifica escenarios con Gherkin simple."
+      placeholder: |
+        Dado <estado>
+        Cuando <acción>
+        Entonces <resultado verificable>
+    validations:
+      required: true
+  - type: textarea
+    id: tdd_tests
+    attributes:
+      label: Tests propuestos (TDD)
+      description: "Enumera tests (pytest) y sus casos borde."
+      placeholder: "- test_deberia_<...>\n- test_no_deberia_<...>"
+  - type: textarea
+    id: design_notes
+    attributes:
+      label: Notas de diseño / arquitectura
+      placeholder: "Diagrama breve, módulos, contratos, riesgos."
+  - type: checkboxes
+    id: dod
+    attributes:
+      label: Definition of Done (marcar todo)
+      options:
+        - label: "Tests: creados y pasando (pytest -q)"
+        - label: "Lint/format: black --check, flake8"
+        - label: "Docs actualizadas (README/ADR/changelog)"
+        - label: "Logs/metrics trazables si aplica"
+        - label: "Security: secretos fuera del repo, inputs saneados"
+        - label: "Aprobado en Code Review"
