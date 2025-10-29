@@ -2,13 +2,14 @@
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
 from datetime import datetime
+from datetime import datetime, UTC
 
 app = FastAPI(title="Orchestrator", version="0.1.0")
 
 @app.get("/health")
 async def health():
     # health básico usado por Traefik / Swarm / deploy_safe.sh
-    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+    return {"status": "ok", "timestamp": datetime.now(UTC).isoformat()}
 
 @app.get("/health/detailed")
 async def health_detailed():

@@ -1,0 +1,61 @@
+version: "3.9"
+
+# ==============================
+# 🧩 STACK BASE - AGENTES AI EQ DESARROLLO
+# Infraestructura mínima XP Sprint 0
+# ==============================
+
+services:
+  orchestrator:
+    image: ghcr.io/maximilianotobio/orchestrator:latest
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints: [node.role == manager]
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/orchestrator_db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - backend
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-examplepassword}
+      - POSTGRES_DB=orchestrator_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+    networks:
+      - backend
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+    networks:
+      - backend
+
+# ---------- Networks & Volumes ----------
+networks:
+  backend:
+    driver: overlay
+
+volumes:
+  pgdata:
