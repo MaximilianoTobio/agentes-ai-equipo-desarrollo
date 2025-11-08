@@ -1,10 +1,10 @@
 """
 Database models and connection management.
-Implements SQLAlchemy async models with connection pooling.
+Implements SQLAlchemy async models with connection pooling and lazy engine initialization.
 """
 import logging
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import (
@@ -24,27 +24,45 @@ from orchestrator.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Create async engine with connection pooling
-engine: AsyncEngine = create_async_engine(
-    settings.database_url,
-    echo=settings.debug,
-    pool_size=20,
-    max_overflow=40,
-    pool_pre_ping=True,
-    pool_recycle=3600,
-)
-
-# Create async session factory
-AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autocommit=False,
-    autoflush=False,
-)
-
 # Declarative base for models
 Base = declarative_base()
+
+# Global variables for lazy initialization
+_engine: Optional[AsyncEngine] = None
+_session_factory: Optional[async_sessionmaker] = None
+
+
+def get_engine() -> AsyncEngine:
+    """
+    Get or create async engine with lazy initialization.
+    This ensures engine uses current settings, not cached values.
+    """
+    global _engine
+    if _engine is None:
+        logger.info(f"Creating database engine with URL: {settings.database_url.split('@')[1]}")
+        _engine = create_async_engine(
+            settings.database_url,
+            echo=settings.debug,
+            pool_size=20,
+            max_overflow=40,
+            pool_pre_ping=True,
+            pool_recycle=3600,
+        )
+    return _engine
+
+
+def get_session_factory() -> async_sessionmaker:
+    """Get or create async session factory."""
+    global _session_factory
+    if _session_factory is None:
+        _session_factory = async_sessionmaker(
+            get_engine(),
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autocommit=False,
+            autoflush=False,
+        )
+    return _session_factory
 
 
 # === Database Models ===
@@ -90,7 +108,7 @@ class TaskModel(Base):
         nullable=True
     )
     result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    task_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # ✅ Renombrado
+    task_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
@@ -153,7 +171,7 @@ class AuditTrailModel(Base):
         nullable=False,
         server_default=func.now()
     )
-    audit_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # ✅ Renombrado
+    audit_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class PairSessionModel(Base):
@@ -208,7 +226,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         async with get_db() as db:
             result = await db.execute(query)
     """
-    async with AsyncSessionLocal() as session:
+    session_factory = get_session_factory()
+    async with session_factory() as session:
         try:
             yield session
             await session.commit()
@@ -228,6 +247,7 @@ async def init_db() -> None:
     This is only for development/testing.
     """
     try:
+        engine = get_engine()
         async with engine.begin() as conn:
             # Create schema if not exists
             await conn.execute(
@@ -244,8 +264,12 @@ async def init_db() -> None:
 
 async def close_db() -> None:
     """Close database connections and dispose engine."""
-    await engine.dispose()
-    logger.info("Database connections closed")
+    global _engine, _session_factory
+    if _engine is not None:
+        await _engine.dispose()
+        _engine = None
+        _session_factory = None
+        logger.info("Database connections closed")
 
 
 async def health_check_db() -> bool:
